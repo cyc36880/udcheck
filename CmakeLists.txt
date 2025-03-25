@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.15)
+project(main)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/UDcheck)
+file(GLOB_RECURSE  scr ${CMAKE_CURRENT_SOURCE_DIR}/lib/UDcheck/*.c)
+
+add_executable(${PROJECT_NAME} ${scr} main.c)

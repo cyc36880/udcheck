@@ -1,0 +1,32 @@
+[
+{
+  "directory": "D:/Desktop/update/udcheck_2/build",
+  "command": "D:/MinGW/bin/gcc.exe  @CMakeFiles/main.dir/includes_C.rsp -g -o CMakeFiles/main.dir/lib/UDcheck/core/udc_core.c.obj -c D:/Desktop/update/udcheck_2/lib/UDcheck/core/udc_core.c",
+  "file": "D:/Desktop/update/udcheck_2/lib/UDcheck/core/udc_core.c",
+  "output": "CMakeFiles/main.dir/lib/UDcheck/core/udc_core.c.obj"
+},
+{
+  "directory": "D:/Desktop/update/udcheck_2/build",
+  "command": "D:/MinGW/bin/gcc.exe  @CMakeFiles/main.dir/includes_C.rsp -g -o CMakeFiles/main.dir/lib/UDcheck/core/udc_event.c.obj -c D:/Desktop/update/udcheck_2/lib/UDcheck/core/udc_event.c",
+  "file": "D:/Desktop/update/udcheck_2/lib/UDcheck/core/udc_event.c",
+  "output": "CMakeFiles/main.dir/lib/UDcheck/core/udc_event.c.obj"
+},
+{
+  "directory": "D:/Desktop/update/udcheck_2/build",
+  "command": "D:/MinGW/bin/gcc.exe  @CMakeFiles/main.dir/includes_C.rsp -g -o CMakeFiles/main.dir/lib/UDcheck/hal/udc_hal_tick.c.obj -c D:/Desktop/update/udcheck_2/lib/UDcheck/hal/udc_hal_tick.c",
+  "file": "D:/Desktop/update/udcheck_2/lib/UDcheck/hal/udc_hal_tick.c",
+  "output": "CMakeFiles/main.dir/lib/UDcheck/hal/udc_hal_tick.c.obj"
+},
+{
+  "directory": "D:/Desktop/update/udcheck_2/build",
+  "command": "D:/MinGW/bin/gcc.exe  @CMakeFiles/main.dir/includes_C.rsp -g -o CMakeFiles/main.dir/lib/UDcheck/misc/udc_mem.c.obj -c D:/Desktop/update/udcheck_2/lib/UDcheck/misc/udc_mem.c",
+  "file": "D:/Desktop/update/udcheck_2/lib/UDcheck/misc/udc_mem.c",
+  "output": "CMakeFiles/main.dir/lib/UDcheck/misc/udc_mem.c.obj"
+},
+{
+  "directory": "D:/Desktop/update/udcheck_2/build",
+  "command": "D:/MinGW/bin/gcc.exe  @CMakeFiles/main.dir/includes_C.rsp -g -o CMakeFiles/main.dir/main.c.obj -c D:/Desktop/update/udcheck_2/main.c",
+  "file": "D:/Desktop/update/udcheck_2/main.c",
+  "output": "CMakeFiles/main.dir/main.c.obj"
+}
+]
