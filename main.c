@@ -19,7 +19,6 @@ static const uint8_t test_buf[] = {
 };
 
 
-
 void event_cb(udc_event_t * e)
 {
     udc_pack_t * pack = udc_event_get_target(e);

@@ -53,8 +53,8 @@ typedef struct _udc_transmit_t
 } udc_transmit_t;
 
 
-typedef struct {
-
+typedef struct 
+{
     udc_event_dsc_t * event_dsc; /**< Dynamically allocated event callback and user data array*/
 
     uint8_t event_dsc_cnt;

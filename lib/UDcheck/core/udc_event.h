@@ -57,7 +57,6 @@ typedef struct _udc_event_dsc_t
     struct _udc_event_dsc_t * next;
     udc_event_code_t filter : 8;
     uint8_t is_alloc : 1; // 0 no alloc, 1 alloc
-    void * ready_param; 
 } udc_event_dsc_t;
 
 
