@@ -68,7 +68,7 @@ struct _udc_pack_t
     udc_pack_t *next;
     int  (*send_bytes)(uint8_t *buf, uint16_t len);
     _udc_obj_spec_attr_t spec_attr;
-    volatile udc_receive_t receive;
+    udc_receive_t receive;
     udc_transmit_t transmit;
     #if UDC_ALL_USE_DEFAULT_DATA_TYPE==0
         UDC_DATA_TYPE_LIST_TYPE *data_type_list;      // data type list

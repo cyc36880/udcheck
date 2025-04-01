@@ -21,7 +21,7 @@ extern "C" {
 
 #define UDC_DATA_TYPE_LIST_TYPE uint16_t
 
-#define UDC_PACK_RECEIVING_TIMEOUT  10 /*ms*/
+#define UDC_PACK_RECEIVING_TIMEOUT  20 /*ms*/
 
 /*Use a uniform data type for all, or assign each individually.*/
 #define UDC_ALL_USE_DEFAULT_DATA_TYPE 1
@@ -43,7 +43,7 @@ extern "C" {
 /*Use a custom tick source that tells the elapsed time in milliseconds.
  *It removes the need to manually update the tick with `udc_tick_inc()`).
 */
-#define UDC_TICK_CUSTOM 0
+#define UDC_TICK_CUSTOM 1
 #if UDC_TICK_CUSTOM==1
     #define UDC_TICK_CUSTOM_INCLUDE "Arduino.h"
     #define UDC_TICK_CUSTOM_SYS_TIME_ESPR    (millis())
