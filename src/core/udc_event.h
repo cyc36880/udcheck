@@ -109,14 +109,14 @@ void * udc_event_get_user_data(udc_event_t * e);
  * Add an event handler function for an object.
  * Used by the user to react on event which happens with the object.
  * An object can have multiple event handler. They will be called in the same order as they were added.
- * @param event_dsc pointer to an event descriptor(staticly allocated)
  * @param pack      pointer to an pack
+ * @param event_dsc pointer to an event descriptor(staticly allocated)
  * @param filter    and event code
  * @param event_cb  the new event function
  * @param           user_data custom data data will be available in `event_cb`
  * @return          a pointer the event descriptor. 
  */
-udc_event_dsc_t * udc_pack_add_event_cb_static(udc_event_dsc_t  *event_dsc, struct _udc_pack_t * pack, udc_event_cb_t event_cb, 
+udc_event_dsc_t * udc_pack_add_event_cb_static(struct _udc_pack_t * pack, udc_event_dsc_t  *event_dsc, udc_event_cb_t event_cb, 
                                                 udc_event_code_t filter, void * user_data);
 
 

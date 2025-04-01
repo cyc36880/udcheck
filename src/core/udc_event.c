@@ -37,7 +37,7 @@ int udc_event_send_exe_now(struct _udc_pack_t * pack, udc_event_code_t event_cod
 
 
 
-udc_event_dsc_t * udc_pack_add_event_cb_static(udc_event_dsc_t  *event_dsc, struct _udc_pack_t * pack, udc_event_cb_t event_cb, udc_event_code_t filter,
+udc_event_dsc_t * udc_pack_add_event_cb_static(struct _udc_pack_t * pack, udc_event_dsc_t  *event_dsc, udc_event_cb_t event_cb, udc_event_code_t filter,
                                                         void * user_data)
 {
     if (NULL == event_dsc) {
