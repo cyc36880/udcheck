@@ -318,7 +318,7 @@ void udc_pack_task(void)
             }
             else
             {
-                udc_event_send_exe_now(pack, UDC_EVENT_RECEIVE_FINSHED_VERIFR_ERROR, NULL);
+                udc_event_send_exe_now(pack, UDC_EVENT_RECEIVE_FINSHED_VERIFY_ERROR, NULL);
                 // 接收校验失败 （事件）
             }
             set_padding_size(pack, 0, 0);

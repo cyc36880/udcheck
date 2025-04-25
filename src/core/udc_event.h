@@ -24,7 +24,7 @@ typedef enum
     UDC_EVENT_RECEIVING_TIME_OUT,     /* receiving time out*/
     UDC_EVENT_RECEIVE_PADDING_OUT,    /* receive padding out, only user_alloc*/
     UDC_EVENT_RECEIVE_HEADER_ERROR,   /* receive header error, only user_alloc*/
-    UDC_EVENT_RECEIVE_FINSHED_VERIFR_ERROR,   /* receive finsh but verify error*/
+    UDC_EVENT_RECEIVE_FINSHED_VERIFY_ERROR,   /* receive finsh but verify error*/
     
     UDC_EVENT_PACK_RECEIVE_FINSHED,   /* receice finsh */
 

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "../UDC_conf.h"
+#include "../udc_conf.h"
 #include "stdbool.h"
 #include "udc_event.h"
 
