@@ -300,14 +300,17 @@ void udc_pack_task(void)
     while (pack)
     {
         receive = &pack->receive;
-        if (0==receive->receive_finished && udc_get_padding_size(pack, 0) && (udc_tick_elaps(receive->recevice_last_tick) >= UDC_PACK_RECEIVING_TIMEOUT) )
+        if (0==receive->receive_finished && udc_get_padding_size(pack, 0) && (udc_tick_elaps(receive->recevice_last_tick) >= UDC_PACK_RECEIVING_TIMEOUT))
         {
+            if ( udc_get_padding_size(pack, 0) >= FIRST_DATA_OFFSET )
+            {
+                // 接收包间超时 （事件）
+                udc_event_send_exe_now(pack, UDC_EVENT_RECEIVING_TIME_OUT, NULL);
+            }
             set_padding_size(pack, 0, 0);
-            // 接收包间超时 （事件）
-            udc_event_send_exe_now(pack, UDC_EVENT_RECEIVING_TIME_OUT, NULL);
             continue;
         }
-
+        
         if (receive->receive_finished)
         {
             uint8_t verify = 0;
