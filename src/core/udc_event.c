@@ -17,7 +17,6 @@ static int event_send_core(udc_event_t * e);
  **********************/
 
 
-
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
@@ -91,7 +90,12 @@ void * udc_event_get_user_data(udc_event_t * e)
 }
 
 
-
+uint32_t udc_event_register_id(void)
+{
+    static uint32_t last_id = _UDC_EVENT_LAST;
+    last_id ++;
+    return last_id;
+}
 
 /**********************
  *   STATIC FUNCTIONS

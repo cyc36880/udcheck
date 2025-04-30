@@ -27,6 +27,7 @@ typedef enum
     UDC_EVENT_RECEIVE_FINSHED_VERIFY_ERROR,   /* receive finsh but verify error*/
     
     UDC_EVENT_PACK_RECEIVE_FINSHED,   /* receice finsh */
+    UDC_EVENT_PACK_TRANSMIT_FINSHED,  /* transmit finsh, int -> param*/ 
 
     _UDC_EVENT_LAST,  /** Number of default events*/
 
@@ -100,9 +101,12 @@ void * udc_event_get_param(udc_event_t * e);
  */
 void * udc_event_get_user_data(udc_event_t * e);
 
-
-
-
+/**
+ * Register a new, custom event ID.
+ * It can be used the same way as e.g. `UDC_EVENT_PACK_TRANSMIT_FINSHED` to send custom events
+ * @return     the new event id
+ */
+uint32_t udc_event_register_id(void);
 
 
 /**

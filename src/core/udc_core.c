@@ -5,24 +5,17 @@
 #include "../misc/udc_mem.h"
 #include "../hal/udc_hal_tick.h"
 
-#if UDC_ALL_USE_DEFAULT_DATA_TYPE==1
-    #ifdef UDC_DATA_TYPE_LIST_BUF
-        static UDC_DATA_TYPE_LIST_TYPE *data_type_list_buf = UDC_DATA_TYPE_LIST_BUF;
-        #if UDC_DATA_TYPE_LIZE_SIZE == -1
-            static const uint8_t data_type_list_size = sizeof(UDC_DATA_TYPE_LIST_BUF);
-        #else
-            static const uint8_t data_type_list_size = UDC_DATA_TYPE_LIZE_SIZE;
-        #endif
-    #else
-        static const UDC_DATA_TYPE_LIST_TYPE data_type_list_buf[] = {
-            1, 2, 4, 8, 16, 32
-        };
-        static const uint8_t data_type_list_size = sizeof(data_type_list_buf)/sizeof(UDC_DATA_TYPE_LIST_TYPE);
-    #endif
-#endif
 
-#define DATA_TYPE_SIZE    sizeof(UDC_DATA_TYPE_LIST_TYPE)
-#define FIRST_DATA_OFFSET (DATA_TYPE_SIZE+UDC_PACKET_HEADERS_SIZE)
+#define FIRST_DATA_OFFSET (UDC_PACKET_HEADERS_SIZE + 2)
+
+#define check_id(id) (id >= 0 && id <= 119)
+#define id_to_packid(id, size) (size>255 ? id+120 : id)
+#define packid_to_id(packid) (packid>=120 ? packid-120 : packid)
+
+#define obj_size_s(packid) (packid <= 119 ? 1 : 2)
+#define obj_size_s2(size)  (size > 255 ? 2 : 1)
+#define obj_header_size(packid) (1 + obj_size_s(packid))
+#define obj_header_size2(size) (1 + obj_size_s2(size))
 
 #define UDC_ABS(x) ((x) < 0 ? -(x) : (x) )
 
@@ -31,28 +24,25 @@
 /**********************
  *  STATIC PROTOTYPES
  **********************/
-static const UDC_DATA_TYPE_LIST_TYPE *get_data_type_list(const udc_pack_t *pack);
-static uint8_t get_data_type_list_size(const udc_pack_t *pack);
-static void set_padding_size(udc_pack_t *pack, uint8_t revive_or_transmit, UDC_DATA_TYPE_LIST_TYPE padding_size);
-static udc_send_bytes_func_t get_send_bytes_func(const udc_pack_t *pack);
-static uint8_t *get_target_buf(const udc_pack_t *pack, uint8_t revive_or_transmit);
-static UDC_DATA_TYPE_LIST_TYPE get_target_buf_size(const udc_pack_t *pack, uint8_t revive_or_transmit);
-static int get_pack_obj_for_data(udc_pack_t *pack, uint8_t *obj_data, udc_obj_t *obj);
+static uint8_t *get_target_buffer(const udc_pack_t *pack, uint8_t receive_or_transmit);
+static uint16_t get_target_buffer_size(const udc_pack_t *pack, uint8_t receive_or_transmit);
 static int get_pack_obj_for_buf(udc_pack_t *pack, uint8_t *obj_buf, udc_obj_t *obj);
-static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint8_t data_type, udc_obj_t *obj);
-static int get_pack_verify(udc_pack_t *pack, uint8_t revice_or_transmit, uint8_t *verify);
 static int check_receive_pack_header(udc_pack_t *pack);
+static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint16_t size, udc_obj_t *obj);
+static int get_pack_verify(udc_pack_t *pack, uint8_t revice_or_transmit, uint8_t *verify);
+static void set_padding_size(udc_pack_t *pack, uint8_t receive_or_transmit, uint16_t padding_size);
+static udc_send_bytes_func_t get_send_bytes_func(const udc_pack_t *pack);
+
 /**********************
  *  STATIC VARIABLES
  **********************/
-
 static udc_pack_t *udc_pack_head = NULL;
-
 
 
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
+
 
 void udc_pack_init(udc_pack_t *pack)
 {
@@ -80,23 +70,38 @@ void udc_pack_init(udc_pack_t *pack)
     }
 }
 
-
-int udc_set_data_type_list(udc_pack_t *pack, uint8_t *data_type_list, uint8_t data_type_list_size)
+void udc_pack_set_send_bytes_func(udc_pack_t *pack, udc_send_bytes_func_t send_bytes)
 {
-    #if UDC_ALL_USE_DEFAULT_DATA_TYPE==0
-        pack->data_type_list = data_type_list;
-        pack->data_type_list_size = data_type_list_size;
-        return 0;
-    #endif
-    return -1;
+    pack->send_bytes = send_bytes;
 }
 
+int udc_pack_set_buffer_size(udc_pack_t *pack, uint8_t receive_or_transmit, uint16_t buffer_size)
+{
+    udc_receive_t *receive = (receive_or_transmit==0 ? &pack->receive : (udc_receive_t *)&pack->transmit);
+    void * alloc_buf = udc_alloc(buffer_size);
+    if (NULL == alloc_buf) return -1;
+    udc_memset_00(alloc_buf, buffer_size);
+    receive->target_buf = alloc_buf;
+    receive->buffer_size = buffer_size;
+    receive->target_buf_is_dynamic = 1;
+}
 
+void udc_pack_recover_buffer(udc_pack_t *pack, uint8_t receive_or_transmit)
+{
+    udc_receive_t *receive = (receive_or_transmit==0 ? &pack->receive : (udc_receive_t *)&pack->transmit);
+    if (receive->target_buf_is_dynamic)
+    {
+        udc_free(receive->target_buf);
+        receive->target_buf = receive->buffer;
+        receive->buffer_size = UDC_MEM_SIZE;
+        receive->target_buf_is_dynamic = 0;
+    }
+}
 
 // 得到数据填充的大小
-UDC_DATA_TYPE_LIST_TYPE udc_get_padding_size(const udc_pack_t *pack, uint8_t revive_or_transmit)
+uint16_t udc_pack_get_padding_size(const udc_pack_t *pack, uint8_t receive_or_transmit)
 {
-    switch (revive_or_transmit)
+    switch (receive_or_transmit)
     {
         case 0:
             return pack->receive.padding_size;
@@ -110,7 +115,6 @@ UDC_DATA_TYPE_LIST_TYPE udc_get_padding_size(const udc_pack_t *pack, uint8_t rev
     return 0;
 }
 
-
 udc_pack_t * udc_pack_get_header(void)
 {
     return udc_pack_head;
@@ -122,41 +126,30 @@ udc_pack_t * udc_pack_get_next(udc_pack_t * pack)
     return pack->next;
 }
 
-
-// 得到类型的大小
-UDC_DATA_TYPE_LIST_TYPE udc_get_data_type_size(const udc_pack_t *pack, uint8_t data_type)
-{
-    if (data_type >= get_data_type_list_size(pack)) return 0;
-    const UDC_DATA_TYPE_LIST_TYPE *data_type_list = get_data_type_list(pack);
-    if (NULL == data_type_list) return 0;
-    return data_type_list[data_type];
-}
-
-
 // 判断obj在pack是不是最后一个
-bool udc_obj_is_end(const udc_pack_t *pack, uint8_t revive_or_transmit, udc_obj_t *obj)
+bool udc_pack_obj_is_end(const udc_pack_t *pack, uint8_t receive_or_transmit, udc_obj_t *obj)
 {
     if (NULL == pack || NULL == obj) return true;
     
-    uint8_t *target_buf = get_target_buf(pack, revive_or_transmit);
+    uint8_t *target_buf = get_target_buffer(pack, receive_or_transmit);
     if (NULL == target_buf) return true;
-
-    UDC_DATA_TYPE_LIST_TYPE padding_size = udc_get_padding_size(pack, revive_or_transmit);
+    
+    uint16_t padding_size = udc_pack_get_padding_size(pack, receive_or_transmit);
+    
     if (padding_size == 0) return true;
-
-    UDC_DATA_TYPE_LIST_TYPE obj_end_pos = (uint32_t)obj->data - (uint32_t)target_buf + udc_get_data_type_size(pack, obj->data_type);
-    if (UDC_ABS(padding_size-1 - obj_end_pos) <= 1) return true;
+    uint16_t obj_end_pos = (uint32_t)obj->data - (uint32_t)target_buf + obj->size;
+    if (UDC_ABS(padding_size - obj_end_pos) <= 1) return true;
 
     return false;
 }
 
 // 得到pack中第一个obj
-int udc_pack_get_first_obj(udc_pack_t *pack, uint8_t revive_or_transmit, udc_obj_t *obj)
+int udc_pack_get_first_obj(udc_pack_t *pack, uint8_t receive_or_transmit, udc_obj_t *obj)
 {
     if (NULL == pack || NULL == obj) return -1;
-    uint8_t *target_buf = get_target_buf(pack, revive_or_transmit);
+    uint8_t *target_buf = get_target_buffer(pack, receive_or_transmit);
     if (NULL == target_buf) return -1;
-    if (udc_get_padding_size(pack, revive_or_transmit) < FIRST_DATA_OFFSET) return -1;
+    if (udc_pack_get_padding_size(pack, receive_or_transmit) < FIRST_DATA_OFFSET) return -1;
 
     if (0 != get_pack_obj_for_buf(pack, target_buf+FIRST_DATA_OFFSET, obj))
     {
@@ -165,68 +158,66 @@ int udc_pack_get_first_obj(udc_pack_t *pack, uint8_t revive_or_transmit, udc_obj
     return 0;
 }
 
+
 // 得到基于obj的下一个obj
-int udc_pack_get_next_obj(udc_pack_t *pack, uint8_t revive_or_transmit, udc_obj_t *base_obj, udc_obj_t *next_obj)
+int udc_pack_get_next_obj(udc_pack_t *pack, uint8_t receive_or_transmit, udc_obj_t *base_obj, udc_obj_t *next_obj)
 {
     if (NULL == base_obj) return -1;
-    if (udc_obj_is_end(pack, revive_or_transmit, base_obj)) return -1;
-    if (0 != get_pack_obj_for_buf(pack, base_obj->data + udc_get_data_type_size(pack, base_obj->data_type), next_obj))
+    if (udc_pack_obj_is_end(pack, receive_or_transmit, base_obj)) 
     {
         return -1;
     }
-
+    if (0 != get_pack_obj_for_buf(pack, base_obj->data + base_obj->size, next_obj))
+    {
+        return -1;
+    }
     return 0;
 }
 
-int udc_pack_get_obj(udc_pack_t *pack, uint8_t revive_or_transmit, uint8_t id, udc_obj_t *obj)
+int udc_pack_get_obj(udc_pack_t *pack, uint8_t receive_or_transmit, uint8_t id, udc_obj_t *obj)
 {
     if (NULL == pack || NULL == obj) return -1;
     udc_obj_t _obj;
-    if (0 != udc_pack_get_first_obj(pack, revive_or_transmit, &_obj)) return -1;
+    if (0 != udc_pack_get_first_obj(pack, receive_or_transmit, &_obj)) return -1;
 
-    for (;;)
-    {
+    UDC_PACK_OBJ_FOREACH(receive_or_transmit, pack, &_obj,
         if (_obj.id == id)
         {
-            obj->id = id;
-            obj->data_type = _obj.data_type;
-            obj->data = _obj.data;
+            memcpy(obj, &_obj, sizeof(udc_obj_t));
             return 0;
         }
-        if (0 != udc_pack_get_next_obj(pack, revive_or_transmit, &_obj, &_obj)) return -1;
-    }
+    );
+    
     return -1;
 }
 
 
-void udc_set_send_bytes_func(udc_pack_t *pack, udc_send_bytes_func_t send_bytes)
+int udc_pack_append_data(udc_pack_t *pack, uint8_t id, uint16_t size, const void *data)
 {
-    pack->send_bytes = send_bytes;
-}
-
-
-int udc_append_data(udc_pack_t *pack, uint8_t id, uint8_t data_type, const void *data)
-{
-    if (NULL == pack || NULL == data) return -1;
+    if (!check_id(id)) return -1;
+    if (NULL == pack || ( size>0 && NULL == data)) return -1;
     udc_obj_t obj;
-    if (0 == udc_get_padding_size(pack, 1))
+    if (0 == udc_pack_get_padding_size(pack, 1))
     {
         for (uint8_t i=0; i<UDC_PACKET_HEADERS_SIZE; i++)
         {
             pack->transmit.target_buf[i] = (uint8_t)UDC_PACKET_HEADERS_START[i];
         }
     }
-    if (0 != get_transmit_pack_obj_for_new(pack, id, data_type, &obj))
+    if (0 != get_transmit_pack_obj_for_new(pack, id, size, &obj))
     {
         return -1;
     }
-    if (data_type != obj.data_type) return -1;
-
-    obj.data[-2] = id;
-    obj.data[-1] = data_type;
-    memcpy(obj.data, data, udc_get_data_type_size(pack, data_type));
+    uint8_t i=0;
+    for (; i<obj_size_s2(size); i++)
+    {
+        obj.data[-(i+1)] = (obj.size >> (i*8))& 0xFF;
+    }
+    obj.data[-(i+1)] = obj.pack_id;
+    memcpy(obj.data, data, size);
     return 0;
 }
+
 
 int udc_pack_push(udc_pack_t *pack)
 {
@@ -234,18 +225,18 @@ int udc_pack_push(udc_pack_t *pack)
     udc_send_bytes_func_t send_bytes = get_send_bytes_func(pack);
     if (NULL == send_bytes) return -1;
 
-    uint8_t* target_buf = get_target_buf(pack, 1);
+    uint8_t* target_buf = get_target_buffer(pack, 1);
     if (NULL == target_buf) return -1;
 
-    UDC_DATA_TYPE_LIST_TYPE padding_size = udc_get_padding_size(pack, 1);
-    UDC_DATA_TYPE_LIST_TYPE padding_verify_size = padding_size + UDC_INSPECT_BIT_SIZE;
+    const uint16_t padding_size = udc_pack_get_padding_size(pack, 1);
+    const uint16_t padding_verify_size = padding_size + UDC_INSPECT_BIT_SIZE;
+    const uint16_t pack_size = padding_verify_size - FIRST_DATA_OFFSET;
 
     if (0 == padding_size) return -1;
 
-    for (uint8_t i=UDC_PACKET_HEADERS_SIZE; i<FIRST_DATA_OFFSET; i++)
-    {
-        target_buf[i] = ( (padding_verify_size-FIRST_DATA_OFFSET)>>8 * (i-UDC_PACKET_HEADERS_SIZE) ) & 0xFF;
-    }
+    target_buf[UDC_PACKET_HEADERS_SIZE + 0] = (pack_size>>8) & 0xFF;
+    target_buf[UDC_PACKET_HEADERS_SIZE + 1] = (pack_size) & 0xFF;
+    
 
     uint8_t verify = 0;
     if (0 != get_pack_verify(pack, 1, &verify)) return -1;
@@ -258,51 +249,86 @@ int udc_pack_push(udc_pack_t *pack)
     return ret;
 }
 
-void udc_pack_receive_data(udc_pack_t *pack, const uint8_t *buf, UDC_DATA_TYPE_LIST_TYPE len)
+void udc_pack_receive_data(udc_pack_t *pack, const uint8_t *buf, uint16_t len)
 {
     volatile udc_receive_t * receive = &pack->receive;
-    uint8_t * target_buf = get_target_buf(pack, 0);
+    if (1 == receive->receive_finished) return;
+
+    uint8_t * target_buf = get_target_buffer(pack, 0);
     uint8_t * receive_size_target_buf = target_buf + UDC_PACKET_HEADERS_SIZE;
 
     receive->recevice_last_tick = udc_tick_get();
 
-    if (1 == receive->receive_finished) return;
-    if (udc_get_padding_size(pack, 0)+len >= get_target_buf_size(pack, 0))
+    if (udc_pack_get_padding_size(pack, 0)+len >= get_target_buffer_size(pack, 0))
     {
         set_padding_size(pack, 0, 0);
         return;
     }
-    memcpy(target_buf+udc_get_padding_size(pack, 0), buf, len);
-    set_padding_size(pack, 0, udc_get_padding_size(pack, 0)+len);
-    if (udc_get_padding_size(pack, 0)>=FIRST_DATA_OFFSET && 0 != check_receive_pack_header(pack))
+    memcpy(target_buf+udc_pack_get_padding_size(pack, 0), buf, len);
+    set_padding_size(pack, 0, udc_pack_get_padding_size(pack, 0)+len);
+    if (udc_pack_get_padding_size(pack, 0)>=FIRST_DATA_OFFSET && 0 != check_receive_pack_header(pack))
     {
         set_padding_size(pack, 0, 0);
         // 接收包头错误 （事件）
         return;
     }
 
-    UDC_DATA_TYPE_LIST_TYPE receive_size = 0;
-    for (uint8_t i=0; i<DATA_TYPE_SIZE; i++)
-    {
-        receive_size |= (UDC_DATA_TYPE_LIST_TYPE)receive_size_target_buf[i] << (8*i);
-    }
-    if (udc_get_padding_size(pack, 0) >= receive_size+FIRST_DATA_OFFSET)
+    uint16_t receive_size = 0;
+    receive_size = receive_size_target_buf[0];
+    receive_size <<= 8;
+    receive_size |= receive_size_target_buf[1];
+
+    if (udc_pack_get_padding_size(pack, 0) >= receive_size + FIRST_DATA_OFFSET)
     {
         receive->receive_finished = 1;
     }
 }
 
+int udc_pack_push_sigal(udc_pack_t *pack,  uint8_t id, uint16_t size, const void *data)
+{
+    const uint16_t pack_size = FIRST_DATA_OFFSET + obj_header_size2(size) + size + UDC_INSPECT_BIT_SIZE;
+    uint8_t buffer[pack_size];
+
+    udc_transmit_t * transmit = &pack->transmit;
+    // remember 
+    uint8_t *target_buf = transmit->target_buf;
+    uint16_t padding_size = transmit->padding_size;
+    uint16_t buffer_size = transmit->buffer_size;
+    uint8_t target_buf_is_dynamic = transmit->target_buf_is_dynamic;
+
+    transmit->target_buf = buffer;
+    transmit->padding_size = 0;
+    transmit->buffer_size = pack_size;
+    transmit->target_buf_is_dynamic = 0;
+
+    int ret = udc_pack_append_data(pack, id, size, data);
+    ret += udc_pack_push(pack);
+
+    // restore
+    transmit->target_buf = target_buf;
+    transmit->padding_size = padding_size;
+    transmit->buffer_size = buffer_size;
+    transmit->target_buf_is_dynamic = target_buf_is_dynamic;
+
+    return ret;
+}
+
 void udc_pack_task(void)
 {
     udc_pack_t * pack = udc_pack_get_header();
-    uint8_t * receive_target_buf = get_target_buf(pack, 0);
+    uint8_t * receive_target_buf = get_target_buffer(pack, 0);
     volatile udc_receive_t * receive = NULL;
     while (pack)
     {
-        receive = &pack->receive;
-        if (0==receive->receive_finished && udc_get_padding_size(pack, 0) && (udc_tick_elaps(receive->recevice_last_tick) >= UDC_PACK_RECEIVING_TIMEOUT))
+        int pack_push_ret = udc_pack_push(pack);
+        if (pack_push_ret > 0)
         {
-            if ( udc_get_padding_size(pack, 0) >= FIRST_DATA_OFFSET )
+            udc_event_send_exe_now(pack, UDC_EVENT_PACK_TRANSMIT_FINSHED, &pack_push_ret);
+        }
+        receive = &pack->receive;
+        if (0==receive->receive_finished && udc_pack_get_padding_size(pack, 0) && (udc_tick_elaps(receive->recevice_last_tick) >= UDC_PACK_RECEIVING_TIMEOUT))
+        {
+            if ( udc_pack_get_padding_size(pack, 0) >= FIRST_DATA_OFFSET )
             {
                 // 接收包间超时 （事件）
                 udc_event_send_exe_now(pack, UDC_EVENT_RECEIVING_TIME_OUT, NULL);
@@ -314,7 +340,7 @@ void udc_pack_task(void)
         if (receive->receive_finished)
         {
             uint8_t verify = 0;
-            if (get_pack_verify(pack, 0, &verify)==0 && receive_target_buf[udc_get_padding_size(pack, 0)-1] == verify)
+            if (get_pack_verify(pack, 0, &verify)==0 && receive_target_buf[udc_pack_get_padding_size(pack, 0)-1] == verify)
             {
                 // 接收完成 （事件）
                 udc_event_send_exe_now(pack, UDC_EVENT_PACK_RECEIVE_FINSHED, NULL);
@@ -332,36 +358,35 @@ void udc_pack_task(void)
 }
 
 
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
 
 
-// 得到数据类型列表
-static const UDC_DATA_TYPE_LIST_TYPE *get_data_type_list(const udc_pack_t *pack)
+
+// 得到目标缓冲区
+static uint8_t *get_target_buffer(const udc_pack_t *pack, uint8_t receive_or_transmit)
 {
-    #if UDC_ALL_USE_DEFAULT_DATA_TYPE==1
-        return data_type_list_buf;
-    #else
-        return pack->data_type_list;
-    #endif
+    switch (receive_or_transmit)
+    {
+        case 0:
+            return pack->receive.target_buf;
+            break;
+        case 1:
+            return pack->transmit.target_buf;
+            break;
+        default:
+            return NULL;
+    }
+    return NULL;
 }
 
-// 得到数据类型列表大小
-static uint8_t get_data_type_list_size(const udc_pack_t *pack)
+
+
+static void set_padding_size(udc_pack_t *pack, uint8_t receive_or_transmit, uint16_t padding_size)
 {
-    #if UDC_ALL_USE_DEFAULT_DATA_TYPE==1
-        return data_type_list_size;
-    #else
-        return pack->data_type_list_size;
-    #endif
-}
-
-
-
-static void set_padding_size(udc_pack_t *pack, uint8_t revive_or_transmit, UDC_DATA_TYPE_LIST_TYPE padding_size)
-{
-    switch (revive_or_transmit)
+    switch (receive_or_transmit)
     {
         case 0:
             pack->receive.padding_size = padding_size;
@@ -381,27 +406,34 @@ static udc_send_bytes_func_t get_send_bytes_func(const udc_pack_t *pack)
 
 
 
-// 得到目标缓冲区
-static uint8_t *get_target_buf(const udc_pack_t *pack, uint8_t revive_or_transmit)
+/**
+ * @description: 在pack中获取obj
+ * @param {udc_pack_t} *pack
+ * @param {uint8_t} *obj_buf 指向obj 的存储头地址
+ * @param {udc_obj_t} *obj
+ * @return {*}
+ */
+static int get_pack_obj_for_buf(udc_pack_t *pack, uint8_t *obj_buf, udc_obj_t *obj)
 {
-    switch (revive_or_transmit)
+    if (NULL == pack || NULL == obj_buf || NULL == obj) return -1;
+
+    obj->pack_id = obj_buf[0];
+    obj->id = packid_to_id(obj->pack_id);
+    obj->data = obj_buf + obj_header_size(obj->pack_id);
+    obj->size = 0;
+    for (uint8_t i=0; i<obj_size_s(obj->pack_id); i++)
     {
-        case 0:
-            return pack->receive.target_buf;
-            break;
-        case 1:
-            return pack->transmit.target_buf;
-            break;
-        default:
-            return NULL;
+        obj->size <<= 8;
+        obj->size |= obj_buf[1+i];
     }
-    return NULL;
+    return 0;
 }
 
+
 // 得到目标缓冲区大小
-static UDC_DATA_TYPE_LIST_TYPE get_target_buf_size(const udc_pack_t *pack, uint8_t revive_or_transmit)
+static uint16_t get_target_buffer_size(const udc_pack_t *pack, uint8_t receive_or_transmit)
 {
-    switch (revive_or_transmit)
+    switch (receive_or_transmit)
     {
         case 0:
             return pack->receive.buffer_size;
@@ -415,71 +447,39 @@ static UDC_DATA_TYPE_LIST_TYPE get_target_buf_size(const udc_pack_t *pack, uint8
     return 0;
 }
 
-/**
- * @description: 在pack中获取obj
- * @param {udc_pack_t} *pack
- * @param {uint8_t} *obj_data 指向obj data的地址
- * @param {udc_obj_t} *obj
- * @return {*}
- */
-static int get_pack_obj_for_data(udc_pack_t *pack, uint8_t *obj_data, udc_obj_t *obj)
-{
-    if (NULL == pack || NULL == obj_data || NULL == obj) return -1;
-
-    obj->data = obj_data;
-    obj->id = obj->data[-2];
-    obj->data_type = obj->data[-1];
-    return 0;
-}
-
-/**
- * @description: 在pack中获取obj
- * @param {udc_pack_t} *pack
- * @param {uint8_t} *obj_buf 指向obj 的存储头地址
- * @param {udc_obj_t} *obj
- * @return {*}
- */
-static int get_pack_obj_for_buf(udc_pack_t *pack, uint8_t *obj_buf, udc_obj_t *obj)
-{
-    if (NULL == pack || NULL == obj_buf || NULL == obj) return -1;
-
-    obj->data = obj_buf+2;
-    obj->id = obj->data[-2];
-    obj->data_type = obj->data[-1];
-    return 0;
-}
-
 
 
 // 根据id获取obj，若没有则尝试创建一个新的obj
-static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint8_t data_type, udc_obj_t *obj)
+static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint16_t size, udc_obj_t *obj)
 {
     if (NULL == pack || NULL == obj) return -1;
 
-    const UDC_DATA_TYPE_LIST_TYPE data_size = udc_get_data_type_size(pack, data_type);
-    const UDC_DATA_TYPE_LIST_TYPE obj_size = 2 + data_size;
-    uint8_t *target_buf = get_target_buf(pack, 1);
-    const UDC_DATA_TYPE_LIST_TYPE target_buf_size = get_target_buf_size(pack, 1);
+    uint8_t *target_buf = get_target_buffer(pack, 1);
+    const uint16_t target_buf_size = get_target_buffer_size(pack, 1);
+    const uint16_t obj_header_size = obj_header_size2(size);
+    const uint16_t obj_size = obj_header_size + size;
 
-    if (0 == data_size || NULL == target_buf) return -1;
+    if (NULL == target_buf) return -1;
 
-    if (0 == udc_get_padding_size(pack, 1)) 
+    if (0 == udc_pack_get_padding_size(pack, 1)) 
     {
         obj->id = id;
-        obj->data_type = data_type;
-        obj->data = target_buf + FIRST_DATA_OFFSET + 2;
+        obj->pack_id = id_to_packid(obj->id, size);
+        obj->size = size;
+        obj->data = target_buf + FIRST_DATA_OFFSET + obj_header_size;
         set_padding_size(pack, 1, FIRST_DATA_OFFSET + obj_size);
     }
     else if (0 == udc_pack_get_obj(pack, 1, id, obj))
     {
-
+        if (size != obj->size) return -1;
     }
-    else if (udc_get_padding_size(pack, 1) + obj_size + UDC_INSPECT_BIT_SIZE <= target_buf_size) 
+    else if (udc_pack_get_padding_size(pack, 1) + obj_size + UDC_INSPECT_BIT_SIZE <= target_buf_size) 
     {
         obj->id = id;
-        obj->data_type = data_type;
-        obj->data = target_buf + udc_get_padding_size(pack, 1)+2;
-        set_padding_size(pack, 1, udc_get_padding_size(pack, 1) + obj_size);
+        obj->pack_id = id_to_packid(id, size);
+        obj->size = size;
+        obj->data = target_buf + udc_pack_get_padding_size(pack, 1)+obj_header_size;
+        set_padding_size(pack, 1, udc_pack_get_padding_size(pack, 1) + obj_size);
     }
     else 
     {
@@ -491,7 +491,7 @@ static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint8_t d
 // 得到pack的和校验值
 static int get_pack_verify(udc_pack_t *pack, uint8_t revice_or_transmit, uint8_t *verify)
 {
-    uint8_t *target_buf = get_target_buf(pack, revice_or_transmit);
+    uint8_t *target_buf = get_target_buffer(pack, revice_or_transmit);
     if (NULL == target_buf) return -1;
     uint8_t _verify = 0;
     for (uint8_t i=0; i<FIRST_DATA_OFFSET; i++)
@@ -500,17 +500,16 @@ static int get_pack_verify(udc_pack_t *pack, uint8_t revice_or_transmit, uint8_t
     }
     udc_obj_t obj;
     if (0 != udc_pack_get_first_obj(pack, revice_or_transmit, &obj)) return -1;
-    for (;;)
-    {
-        _verify += obj.id;
-        _verify += obj.data_type;
 
-        for (UDC_DATA_TYPE_LIST_TYPE i=0; i<udc_get_data_type_size(pack, obj.data_type); i++)
+    UDC_PACK_OBJ_FOREACH(revice_or_transmit, pack, &obj,
+        _verify += obj.pack_id;
+        _verify += obj.size;
+
+        for (uint16_t i=0; i<obj.size; i++)
         {
             _verify += obj.data[i];
         }
-        if (0 != udc_pack_get_next_obj(pack, revice_or_transmit, &obj, &obj)) break;
-    }
+    );
     *verify = _verify;
     return 0;
 }
@@ -518,7 +517,7 @@ static int get_pack_verify(udc_pack_t *pack, uint8_t revice_or_transmit, uint8_t
 // 检查 receive pack 的头部是否符合标准
 static int check_receive_pack_header(udc_pack_t *pack)
 {
-    uint8_t *target_buf = get_target_buf(pack, 0);
+    uint8_t *target_buf = get_target_buffer(pack, 0);
     for (uint8_t i=0; i<UDC_PACKET_HEADERS_SIZE; i++)
     {
         if (target_buf[i] != (uint8_t)UDC_PACKET_HEADERS_START[i])
