@@ -325,7 +325,8 @@ int udc_pack_push_sigal(udc_pack_t *pack,  uint8_t id, uint16_t size, const void
     return ret;
 }
 
-int udc_pack_wait(udc_pack_t *pack, uint32_t timeout)
+// a simple wait, not verify check ...
+int udc_pack_receive_wait(udc_pack_t *pack, uint8_t is_clean_finsh, uint32_t timeout)
 {
     uint32_t last_tick = udc_tick_get();
     while (pack->receive.receive_finished == 0)
@@ -335,7 +336,11 @@ int udc_pack_wait(udc_pack_t *pack, uint32_t timeout)
             return -1;
         }
     }
-    return -1;
+    if (is_clean_finsh)
+    {
+        pack->receive.receive_finished = 0;
+    }
+    return 0;
 }
 
 

@@ -76,7 +76,8 @@ struct _udc_pack_t
 void udc_pack_init(udc_pack_t *pack);
 void udc_pack_receive_data(udc_pack_t *pack, const uint8_t *buf, uint16_t len);
 void udc_pack_task(void);
-int  udc_pack_wait(udc_pack_t *pack, uint32_t timeout);
+// a simple wait, not verify check ...
+int  udc_pack_receive_wait(udc_pack_t *pack, uint8_t is_clean_finsh, uint32_t timeout);
 
 void udc_pack_set_send_bytes_func(udc_pack_t *pack, udc_send_bytes_func_t send_bytes);
 int  udc_pack_set_buffer_size(udc_pack_t *pack, uint8_t receive_or_transmit, uint16_t buffer_size);
