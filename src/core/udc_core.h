@@ -76,11 +76,13 @@ struct _udc_pack_t
 void udc_pack_init(udc_pack_t *pack);
 void udc_pack_receive_data(udc_pack_t *pack, const uint8_t *buf, uint16_t len);
 void udc_pack_task(void);
+int  udc_pack_wait(udc_pack_t *pack, uint32_t timeout);
 
+void udc_pack_set_send_bytes_func(udc_pack_t *pack, udc_send_bytes_func_t send_bytes);
 int  udc_pack_set_buffer_size(udc_pack_t *pack, uint8_t receive_or_transmit, uint16_t buffer_size);
 void udc_pack_recover_buffer(udc_pack_t *pack, uint8_t receive_or_transmit);
 
-void udc_pack_set_send_bytes_func(udc_pack_t *pack, udc_send_bytes_func_t send_bytes);
+
 int  udc_pack_append_data(udc_pack_t *pack, uint8_t id, uint16_t size, const void *data);
 int  udc_pack_push(udc_pack_t *pack);
 // The cache comes from the stack and does not trigger 'UDC_EVENT_PACK_TRANSMIT_FINSHED' events

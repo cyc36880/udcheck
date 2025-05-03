@@ -8,14 +8,26 @@
 
 #define FIRST_DATA_OFFSET (UDC_PACKET_HEADERS_SIZE + 2)
 
-#define check_id(id) (id >= 0 && id <= 119)
-#define id_to_packid(id, size) (size>255 ? id+120 : id)
-#define packid_to_id(packid) (packid>=120 ? packid-120 : packid)
+#define check_id(id) ( (id >= 0 && id <= 119) || (id >= 240 && id <= 255) )
+
+#define id_to_packid(id, size) (id<240 ?        \
+                                    size<=255 ? \
+                                    id : id+120 \
+                                : id)
+                                
+#define packid_to_id(packid) (packid>=120 ?         \
+                                packid < 240 ?      \
+                                packid-120 : packid \
+                              : packid)
 
 #define obj_size_s(packid) (packid <= 119 ? 1 : 2)
-#define obj_size_s2(size)  (size > 255 ? 2 : 1)
+#define obj_size_s2(id, size)  ( id <240 ?       \
+                                    size > 255 ? \
+                                    2 : 1        \
+                                : 2)
+
 #define obj_header_size(packid) (1 + obj_size_s(packid))
-#define obj_header_size2(size) (1 + obj_size_s2(size))
+#define obj_header_size2(id, size) (1 + obj_size_s2(id, size))
 
 #define UDC_ABS(x) ((x) < 0 ? -(x) : (x) )
 
@@ -209,7 +221,7 @@ int udc_pack_append_data(udc_pack_t *pack, uint8_t id, uint16_t size, const void
         return -1;
     }
     uint8_t i=0;
-    for (; i<obj_size_s2(size); i++)
+    for (; i<obj_size_s2(id, size); i++)
     {
         obj.data[-(i+1)] = (obj.size >> (i*8))& 0xFF;
     }
@@ -286,7 +298,7 @@ void udc_pack_receive_data(udc_pack_t *pack, const uint8_t *buf, uint16_t len)
 
 int udc_pack_push_sigal(udc_pack_t *pack,  uint8_t id, uint16_t size, const void *data)
 {
-    const uint16_t pack_size = FIRST_DATA_OFFSET + obj_header_size2(size) + size + UDC_INSPECT_BIT_SIZE;
+    const uint16_t pack_size = FIRST_DATA_OFFSET + obj_header_size2(id, size) + size + UDC_INSPECT_BIT_SIZE;
     uint8_t buffer[pack_size];
 
     udc_transmit_t * transmit = &pack->transmit;
@@ -312,6 +324,20 @@ int udc_pack_push_sigal(udc_pack_t *pack,  uint8_t id, uint16_t size, const void
 
     return ret;
 }
+
+int udc_pack_wait(udc_pack_t *pack, uint32_t timeout)
+{
+    uint32_t last_tick = udc_tick_get();
+    while (pack->receive.receive_finished == 0)
+    {
+        if (udc_tick_elaps(last_tick) >= timeout)
+        {
+            return -1;
+        }
+    }
+    return -1;
+}
+
 
 void udc_pack_task(void)
 {
@@ -456,7 +482,7 @@ static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint16_t 
 
     uint8_t *target_buf = get_target_buffer(pack, 1);
     const uint16_t target_buf_size = get_target_buffer_size(pack, 1);
-    const uint16_t obj_header_size = obj_header_size2(size);
+    const uint16_t obj_header_size = obj_header_size2(id, size);
     const uint16_t obj_size = obj_header_size + size;
 
     if (NULL == target_buf) return -1;
