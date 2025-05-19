@@ -16,12 +16,16 @@ struct _udc_pack_t;
 typedef int (*udc_send_bytes_func_t)(const struct _udc_pack_t *pack, const uint8_t *buf, uint16_t len);
 typedef int (*calculate_verify_func_t)(const struct _udc_pack_t *pack, const uint8_t *buf, uint16_t len, uint8_t *verify);
 
-#define UDC_PACK_OBJ_FOREACH(revive_or_transmit, pack, obj, active) \
-    udc_pack_get_first_obj(pack, revive_or_transmit, obj);          \
-    do                                                              \
-    {                                                               \
-        active                                                      \
-    } while (0 == udc_pack_get_next_obj(pack, revive_or_transmit, obj, obj))
+#define UDC_PACK_OBJ_FOREACH(revive_or_transmit, pack, obj, active)               \
+    do                                                                            \
+    {                                                                             \
+        if (0 != udc_pack_get_first_obj(pack, revive_or_transmit, obj)) break;    \
+        do                                                                        \
+        {                                                                         \
+            active                                                                \
+        } while (0 == udc_pack_get_next_obj(pack, revive_or_transmit, obj, obj)); \
+    } while (0)
+
 
 #define UDC_PACK_RECEIVE_WAIT(pack, buffer, buf_len, timeout, active) \
     do                                                                \
