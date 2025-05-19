@@ -117,7 +117,7 @@ uint32_t udc_event_register_id(void);
  * @param event_dsc pointer to an event descriptor(staticly allocated)
  * @param filter    and event code
  * @param event_cb  the new event function
- * @param           user_data custom data data will be available in `event_cb`
+ * @param user_data custom data data will be available in `event_cb`
  * @return          a pointer the event descriptor. 
  */
 udc_event_dsc_t * udc_pack_add_event_cb_static(struct _udc_pack_t * pack, udc_event_dsc_t  *event_dsc, udc_event_cb_t event_cb, 

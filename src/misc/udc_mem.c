@@ -1,6 +1,8 @@
 #include "udc_mem.h"
 #include "../../../udc_conf.h"
-#include UDC_MEM_CUCTOM_INCLUDE
+#if UDC_USE_ALLOC
+    #include UDC_MEM_CUCTOM_INCLUDE
+#endif
 
 
 
@@ -19,17 +21,27 @@ void udc_memset_00(void * dst, size_t len)
 
 void * udc_alloc(size_t size)
 {
-    return UDC_MEM_CUSTOM_ALLOC(size);
+    #if UDC_USE_ALLOC
+        return UDC_MEM_CUSTOM_ALLOC(size);
+    #else
+        return NULL;
+    #endif
 }
 
 void udc_free(void * ptr)
 {
-    UDC_MEM_CUSTOM_FREE(ptr);
+    #if UDC_USE_ALLOC
+        UDC_MEM_CUSTOM_FREE(ptr);
+    #endif
 }
 
 void * udc_realloc(void * ptr, size_t size)
 {
-    return UDC_MEM_CUSTOM_REALLOC(ptr, size);
+    #if UDC_USE_ALLOC
+        return UDC_MEM_CUSTOM_REALLOC(ptr, size);
+    #else
+        return NULL;
+    #endif
 }
 
 
