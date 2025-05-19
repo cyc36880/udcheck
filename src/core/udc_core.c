@@ -7,22 +7,28 @@
 
 #define FIRST_DATA_OFFSET (UDC_PACKET_HEADERS_SIZE + 2)
 
-#define check_id(id) ((id >= 0 && id <= 119) || (id >= 240 && id <= 255))
+#define check_id(id) ( (id >= 0 && id <= 119) || (id >= 240 && id <= 255) )
 
-#define id_to_packid(id, size) (id < 240 ? size <= 255 ? id : id + 120 \
-                                         : id)
+#define id_to_packid(id, size) (id < 240 ?            \
+                                    size <= 255 ?     \
+                                        id : id + 120 \
+                                : id)
 
-#define packid_to_id(packid) (packid >= 120 ? packid < 240 ? packid - 120 : packid \
-                                            : packid)
+#define packid_to_id(packid) (packid >= 120 ?             \
+                                 packid < 240 ?           \
+                                    packid - 120 : packid \
+                              : packid)
 
 #define obj_size_s(packid) (packid <= 119 ? 1 : 2)
-#define obj_size_s2(id, size) (id < 240 ? size > 255 ? 2 : 1 \
-                                        : 2)
+#define obj_size_s2(id, size) (id < 240 ?     \
+                                 size > 255 ? \
+                                    2 : 1     \
+                               : 2)
 
 #define obj_header_size(packid) (1 + obj_size_s(packid))
 #define obj_header_size2(id, size) (1 + obj_size_s2(id, size))
 
-#define UDC_ABS(x) ((x) < 0 ? -(x) : (x))
+#define UDC_ABS(x) ( (x) < 0 ? -(x) : (x) )
 
 /**********************
  *  STATIC PROTOTYPES
