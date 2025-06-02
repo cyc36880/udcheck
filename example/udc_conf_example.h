@@ -8,17 +8,7 @@ extern "C" {
 
 #include "stdint.h"
 
-
-// Packet headers
-#define UDC_PACKET_HEADERS_SIZE  1
-#define UDC_PACKET_HEADERS_START "\xFA"
-
-/* Inspect the bits
- * !!! To change its length, the corresponding 
- * validation function must be provided
- */
-#define UDC_INSPECT_BIT_SIZE     1
-
+/* The maximum timeout period for byte transfer */
 #define UDC_PACK_RECEIVING_TIMEOUT  20 /*ms*/
 
 #define UDC_USE_ALLOC 0
@@ -33,8 +23,8 @@ extern "C" {
 */
 #define UDC_TICK_CUSTOM 0
 #if UDC_TICK_CUSTOM
-    #define UDC_TICK_CUSTOM_INCLUDE          "Arduino.h"
-    #define UDC_TICK_CUSTOM_SYS_TIME_ESPR    (millis())
+    #define UDC_TICK_CUSTOM_INCLUDE     "Arduino.h"
+    #define UDC_TICK_CUSTOM_SYS_TIME    (millis())
 #endif
 
 #ifdef __cplusplus

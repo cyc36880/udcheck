@@ -65,7 +65,46 @@ udc_event_dsc_t * udc_pack_add_event_cb_static(struct _udc_pack_t * pack, udc_ev
     return event_dsc;
 }
 
+udc_event_dsc_t * udc_pack_add_event_cb(struct _udc_pack_t * pack, udc_event_cb_t event_cb, udc_event_code_t filter, void * user_data)
+{
+    udc_event_dsc_t *event_dsc = udc_mem_alloc(sizeof(udc_event_dsc_t));
+    if (NULL == event_dsc) return NULL;
+    udc_pack_add_event_cb_static(pack, event_dsc, event_cb, filter, user_data);
+    event_dsc->is_alloc = 1;
+    return event_dsc;
+}
 
+int udc_pack_remove_event_cb(struct _udc_pack_t * pack, udc_event_cb_t event_cb)
+{
+    if (0 == pack->spec_attr.event_dsc_cnt) return -1;
+    udc_event_dsc_t *pthis = pack->spec_attr.event_dsc;
+    udc_event_dsc_t *prv = pthis;
+    int ret_flag = -1;
+
+    while (pthis)
+    {
+        if (NULL == event_cb || pthis->cb == event_cb) 
+        {
+            ret_flag = 0;
+            pack->spec_attr.event_dsc_cnt--;
+            prv->next = pthis->next;
+            if (1 == pthis->is_alloc)
+                udc_mem_free(pthis);
+            if (0 == pack->spec_attr.event_dsc_cnt)
+            {
+                pack->spec_attr.event_dsc = NULL;
+                return 0;
+            }
+            if (NULL == event_cb)
+            {
+                return 0;
+            }
+        }
+        prv = pthis;
+        pthis = pthis->next;
+    }
+    return ret_flag;
+}
 
 struct _udc_pack_t * udc_event_get_target(udc_event_t * e)
 {

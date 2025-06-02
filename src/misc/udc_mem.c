@@ -19,7 +19,7 @@ void udc_memset_00(void * dst, size_t len)
 }
 
 
-void * udc_alloc(size_t size)
+void * udc_mem_alloc(size_t size)
 {
     #if UDC_USE_ALLOC
         return UDC_MEM_CUSTOM_ALLOC(size);
@@ -28,14 +28,14 @@ void * udc_alloc(size_t size)
     #endif
 }
 
-void udc_free(void * ptr)
+void udc_mem_free(void * ptr)
 {
     #if UDC_USE_ALLOC
         UDC_MEM_CUSTOM_FREE(ptr);
     #endif
 }
 
-void * udc_realloc(void * ptr, size_t size)
+void * udc_mem_realloc(void * ptr, size_t size)
 {
     #if UDC_USE_ALLOC
         return UDC_MEM_CUSTOM_REALLOC(ptr, size);

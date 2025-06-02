@@ -56,7 +56,7 @@ typedef struct _udc_event_dsc_t
     udc_event_cb_t cb;
     void * user_data;
     struct _udc_event_dsc_t * next;
-    udc_event_code_t filter : 8;
+    udc_event_code_t filter;
     uint8_t is_alloc : 1; // 0 no alloc, 1 alloc
 } udc_event_dsc_t;
 
@@ -123,12 +123,26 @@ uint32_t udc_event_register_id(void);
 udc_event_dsc_t * udc_pack_add_event_cb_static(struct _udc_pack_t * pack, udc_event_dsc_t  *event_dsc, udc_event_cb_t event_cb, 
                                                 udc_event_code_t filter, void * user_data);
 
-
-
+/**
+ * Add an event handler function for an object.
+ * Used by the user to react on event which happens with the object.
+ * An object can have multiple event handler. They will be called in the same order as they were added.
+ * @param pack      pointer to an pack
+ * @param filter    and event code
+ * @param event_cb  the new event function
+ * @param user_data custom data data will be available in `event_cb`
+ * @return          a pointer the event descriptor. 
+ */
+udc_event_dsc_t * udc_pack_add_event_cb(struct _udc_pack_t * pack, udc_event_cb_t event_cb, udc_event_code_t filter, void * user_data);
 
  
-
-
+/**
+ * Remove an event handler function for an object.
+ * @param pack      pointer to an pack
+ * @param event_cb  the event function to remove, or `NULL` to remove the firstly added event callback
+ * @return          true if any event handlers were removed
+ */
+int udc_pack_remove_event_cb(struct _udc_pack_t * pack, udc_event_cb_t event_cb);
 
 #ifdef __cplusplus
 }

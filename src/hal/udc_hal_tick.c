@@ -24,7 +24,7 @@ uint32_t udc_tick_get(void)
     #if UDC_TICK_CUSTOM==0
         return sys_time;
     #else
-        return UDC_TICK_CUSTOM_SYS_TIME_ESPR;
+        return UDC_TICK_CUSTOM_SYS_TIME;
     #endif
 }
 

@@ -24,9 +24,9 @@ void udc_memset(void * dst, uint8_t v, size_t len);
  */
 void udc_memset_00(void * dst, size_t len);
 
-void * udc_alloc(size_t size);
-void udc_free(void * ptr);
-void * udc_realloc(void * ptr, size_t size);
+void * udc_mem_alloc(size_t size);
+void udc_mem_free(void * ptr);
+void * udc_mem_realloc(void * ptr, size_t size);
 
 
 #ifdef __cplusplus
