@@ -401,7 +401,7 @@ void udc_pack_task(void)
         int pack_push_ret = udc_pack_push(pack);
         if (pack_push_ret > 0)
         {
-            udc_event_send_exe_now(pack, UDC_EVENT_PACK_TRANSMIT_FINSHED, &pack_push_ret);
+            udc_event_send_exe_now(pack, UDC_EVENT_PACK_TRANSMIT_FINSHED, (void *)&pack_push_ret);
         }
         receive = &pack->receive;
         if (0 == receive->receive_finished && udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) && (udc_tick_elaps(receive->recevice_last_tick) >= UDC_PACK_RECEIVING_TIMEOUT))

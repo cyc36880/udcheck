@@ -26,30 +26,29 @@ typedef int (*calculate_verify_func_t)(const struct _udc_pack_t *pack, const uin
         } while (0 == udc_pack_get_next_obj(pack, recive_or_transmit, obj, obj)); \
     } while (0)
 
-
-#define UDC_PACK_RECEIVE_WAIT(pack, buffer, buf_len, timeout, active) \
-    do                                                                \
-    {                                                                 \
-        udc_receive_t *pack_rev = &(pack)->receive;                   \
-        udc_receive_t rev_tmp = (pack)->receive;                      \
-        udc_memset_00(pack_rev, sizeof(udc_receive_t));               \
-        pack_rev->target_buf = (buffer);                              \
-        pack_rev->buffer_size = (buf_len);                            \
-        uint32_t last_tick = udc_tick_get();                          \
-        uint8_t active_flag = 1;                                      \
-        while (pack_rev->receive_finished == 0)                       \
-        {                                                             \
-            if (udc_tick_elaps(last_tick) > (timeout))                \
-            {                                                         \
-                active_flag = 0;                                      \
-                break;                                                \
-            }                                                         \
-        }                                                             \
-        if (active_flag && udc_pack_check_receive_verify(pack)==0)    \
-        {                                                             \
-            active                                                    \
-        }                                                             \
-        (pack)->receive = rev_tmp;                                    \
+#define UDC_PACK_RECEIVE_WAIT(pack, buffer, buf_len, timeout, active)     \
+    do                                                                    \
+    {                                                                     \
+        udc_receive_t *_pack_rev_ = &((pack)->receive);                   \
+        udc_receive_t _rev_tmp_ = (pack)->receive;                        \
+        udc_memset_00(_pack_rev_, sizeof(udc_receive_t));                 \
+        _pack_rev_->target_buf = (buffer);                                \
+        _pack_rev_->buffer_size = (buf_len);                              \
+        uint32_t _last_tick_ = udc_tick_get();                            \
+        uint8_t _active_flag_ = 1;                                        \
+        while (_pack_rev_->receive_finished == 0)                         \
+        {                                                                 \
+            if (udc_tick_elaps(_last_tick_) > (timeout))                  \
+            {                                                             \
+                _active_flag_ = 0;                                        \
+                break;                                                    \
+            }                                                             \
+        }                                                                 \
+        if (_active_flag_ && udc_pack_check_receive_verify(pack) == 0)    \
+        {                                                                 \
+            active                                                        \
+        }                                                                 \
+        (pack)->receive = _rev_tmp_;                                      \
     } while (0)
 
 typedef enum 
