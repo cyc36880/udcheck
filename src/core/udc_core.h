@@ -62,7 +62,7 @@ typedef struct _udc_obj_t
     uint8_t *data;
     uint16_t size;   // data len
     uint8_t id;      // data id
-    uint8_t pack_id; // pack_id=id+120 when size>255, otherwise pack_id=id
+    uint8_t obj_id; // obj_id=id+120 when size>255, otherwise obj_id=id
 } udc_obj_t;
 
 typedef struct _udc_receive_t

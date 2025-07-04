@@ -9,12 +9,12 @@
 
 #define check_id(id) ( (id >= 0 && id <= 119) || (id >= 240 && id <= 255) )
 
-#define id_to_packid(id, size) (id < 240 ?            \
+#define id_to_objid(id, size) (id < 240 ?            \
                                     size <= 255 ?     \
                                         id : id + 120 \
                                 : id)
 
-#define packid_to_id(packid) (packid >= 120 ?             \
+#define objid_to_id(packid) (packid >= 120 ?             \
                                  packid < 240 ?           \
                                     packid - 120 : packid \
                               : packid)
@@ -260,7 +260,7 @@ int udc_pack_append_data(udc_pack_t *pack, uint8_t id, uint16_t size, const void
     {
         obj.data[-(i + 1)] = (obj.size >> (i * 8)) & 0xFF;
     }
-    obj.data[-(i + 1)] = obj.pack_id;
+    obj.data[-(i + 1)] = obj.obj_id;
     memcpy(obj.data, data, size);
     return 0;
 }
@@ -470,11 +470,11 @@ static int get_pack_obj_for_buf(const udc_pack_t *pack, uint8_t *obj_buf, udc_ob
     if (NULL == pack || NULL == obj_buf || NULL == obj)
         return -1;
 
-    obj->pack_id = obj_buf[0];
-    obj->id = packid_to_id(obj->pack_id);
-    obj->data = obj_buf + obj_header_size(obj->pack_id);
+    obj->obj_id = obj_buf[0];
+    obj->id = objid_to_id(obj->obj_id);
+    obj->data = obj_buf + obj_header_size(obj->obj_id);
     obj->size = 0;
-    for (uint8_t i = 0; i < obj_size_s(obj->pack_id); i++)
+    for (uint8_t i = 0; i < obj_size_s(obj->obj_id); i++)
     {
         obj->size <<= 8;
         obj->size |= obj_buf[1 + i];
@@ -516,7 +516,7 @@ static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint16_t 
     if (0 == udc_pack_get_padding_size(pack, UDC_PACK_TRANSMIT))
     {
         obj->id = id;
-        obj->pack_id = id_to_packid(obj->id, size);
+        obj->obj_id = id_to_objid(obj->id, size);
         obj->size = size;
         obj->data = target_buf + FIRST_DATA_OFFSET(pack) + obj_header_size;
         set_padding_size(pack, UDC_PACK_TRANSMIT, FIRST_DATA_OFFSET(pack) + obj_size);
@@ -529,7 +529,7 @@ static int get_transmit_pack_obj_for_new(udc_pack_t *pack, uint8_t id, uint16_t 
     else if (udc_pack_get_padding_size(pack, UDC_PACK_TRANSMIT) + obj_size + pack->verify.verify_len <= target_buf_size)
     {
         obj->id = id;
-        obj->pack_id = id_to_packid(id, size);
+        obj->obj_id = id_to_objid(id, size);
         obj->size = size;
         obj->data = target_buf + udc_pack_get_padding_size(pack, UDC_PACK_TRANSMIT) + obj_header_size;
         set_padding_size(pack, UDC_PACK_TRANSMIT, udc_pack_get_padding_size(pack, UDC_PACK_TRANSMIT) + obj_size);
