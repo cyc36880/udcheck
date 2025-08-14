@@ -7,14 +7,14 @@
 
 #define FIRST_DATA_OFFSET(pack) (pack->header.header_len + 2)
 
-#define check_id(id) ( (id >= 0 && id <= 119) || (id >= 240 && id <= 255) )
+#define check_id(id) ( ( (id) >= 0 && (id) <= 119 ) || ( (id) >= 240 && (id) <= 255 ) )
 
-#define id_to_objid(id, size) (id < 240 ?            \
+#define id_to_objid(id, size) (id < 240 ?             \
                                     size <= 255 ?     \
                                         id : id + 120 \
                                 : id)
 
-#define objid_to_id(packid) (packid >= 120 ?             \
+#define objid_to_id(packid) (packid >= 120 ?              \
                                  packid < 240 ?           \
                                     packid - 120 : packid \
                               : packid)
@@ -110,12 +110,13 @@ uint8_t *udc_pack_get_target_buffer(const udc_pack_t *pack, udc_pack_receive_or_
     {
     case 0:
         return pack->receive.target_buf;
-        break;
+//        break;
     case 1:
         return pack->transmit.target_buf;
-        break;
+//        break;
     default:
-        return NULL;
+//        return NULL;
+        break;
     }
     return NULL;
 }
@@ -136,6 +137,7 @@ int udc_pack_set_buffer(udc_pack_t *pack, udc_pack_receive_or_transmit_t receive
         return -1;
     udc_memset_00(alloc_buf, buffer_size);
     ((udc_receive_t *)udc_pack_set_buffer_static(pack, receive_or_transmit, alloc_buf, buffer_size))->target_buf_is_dynamic = 1;
+    return 0;
 }
 
 // 得到数据填充的大小
@@ -145,12 +147,13 @@ uint16_t udc_pack_get_padding_size(const udc_pack_t *pack, udc_pack_receive_or_t
     {
     case 0:
         return pack->receive.padding_size;
-        break;
+//        break;
     case 1:
         return pack->transmit.padding_size;
-        break;
+//        break;
     default:
-        return 0;
+//        return 0;
+        break;
     }
     return 0;
 }
@@ -489,12 +492,13 @@ static uint16_t get_target_buffer_size(const udc_pack_t *pack, udc_pack_receive_
     {
     case 0:
         return pack->receive.buffer_size;
-        break;
+//        break;
     case 1:
         return pack->transmit.buffer_size;
-        break;
+//        break;
     default:
-        return 0;
+//        return 0;
+        break;
     }
     return 0;
 }
