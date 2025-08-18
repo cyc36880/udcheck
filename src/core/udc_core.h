@@ -16,17 +16,20 @@ struct _udc_pack_t;
 typedef int (*udc_send_bytes_func_t)(const struct _udc_pack_t *pack, const uint8_t *buf, uint16_t len);
 typedef int (*calculate_verify_func_t)(const struct _udc_pack_t *pack, const uint8_t *buf, uint16_t len, uint8_t *verify);
 
-#define UDC_PACK_OBJ_FOREACH(recive_or_transmit, pack, obj, active)               \
-    do                                                                            \
-    {                                                                             \
-        if (0 != udc_pack_get_first_obj(pack, recive_or_transmit, obj)) break;    \
-        do                                                                        \
-        {                                                                         \
-            active                                                                \
-        } while (0 == udc_pack_get_next_obj(pack, recive_or_transmit, obj, obj)); \
+// Iterate over all objects in the pack
+#define UDC_PACK_OBJ_FOREACH(receive_or_transmit, pack, obj, active)               \
+    do                                                                             \
+    {                                                                              \
+        if (0 != udc_pack_get_first_obj(pack, receive_or_transmit, obj))           \
+            break;                                                                 \
+        do                                                                         \
+        {                                                                          \
+            active                                                                 \
+        } while (0 == udc_pack_get_next_obj(pack, receive_or_transmit, obj, obj)); \
     } while (0)
 
-#define UDC_PACK_RECEIVE_WAIT(pack, buffer, buf_len, timeout, active)     \
+// Without breaking the original receive buffer, wait for the receive to complete
+#define UDC_PACK_RECEIVE_WAIT_0(pack, buffer, buf_len, timeout, active)   \
     do                                                                    \
     {                                                                     \
         udc_receive_t *_pack_rev_ = &((pack)->receive);                   \
@@ -237,6 +240,15 @@ int udc_pack_push(udc_pack_t *pack);
  * @return      0:success -1:failed
  */
 int udc_pack_push_single(udc_pack_t *pack, uint8_t id, uint16_t size, const void *data);
+
+/**
+ * @description: Wait for the acceptance to complete
+ * @param pack              Package pointer.
+ * @param timeout           timeout value
+ * @param isClearnFinished  whether to clear the finished flag; 1:yes 0:no
+ * @return                  0:success -1:failed
+ */
+int udc_pack_receive_wait(udc_pack_t *pack, uint32_t timeout, uint8_t isClearnFinished);
 
 /**
  * @description: Gets the size of the buffer staging data.

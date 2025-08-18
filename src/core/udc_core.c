@@ -106,19 +106,19 @@ void udc_pack_set_send_bytes_func(udc_pack_t *pack, udc_send_bytes_func_t send_b
 // 得到目标缓冲区
 uint8_t *udc_pack_get_target_buffer(const udc_pack_t *pack, udc_pack_receive_or_transmit_t receive_or_transmit)
 {
+    uint8_t *target_buffer = NULL;
     switch (receive_or_transmit)
     {
     case 0:
-        return pack->receive.target_buf;
-//        break;
+        target_buffer = pack->receive.target_buf;
+        break;
     case 1:
-        return pack->transmit.target_buf;
-//        break;
+        target_buffer = pack->transmit.target_buf;
+        break;
     default:
-//        return NULL;
         break;
     }
-    return NULL;
+    return target_buffer;
 }
 
 void *udc_pack_set_buffer_static(udc_pack_t *pack, udc_pack_receive_or_transmit_t receive_or_transmit, uint8_t *buffer, uint16_t buffer_size)
@@ -126,6 +126,7 @@ void *udc_pack_set_buffer_static(udc_pack_t *pack, udc_pack_receive_or_transmit_
     udc_receive_t *receive = (receive_or_transmit == UDC_PACK_RECEIVE ? &pack->receive : (udc_receive_t *)&pack->transmit);
     receive->target_buf = buffer;
     receive->buffer_size = buffer_size;
+    receive->target_buf_is_dynamic = 0;
     return receive;
 }
 
@@ -143,19 +144,19 @@ int udc_pack_set_buffer(udc_pack_t *pack, udc_pack_receive_or_transmit_t receive
 // 得到数据填充的大小
 uint16_t udc_pack_get_padding_size(const udc_pack_t *pack, udc_pack_receive_or_transmit_t receive_or_transmit)
 {
+    uint16_t padding_size = 0;
     switch (receive_or_transmit)
     {
     case 0:
-        return pack->receive.padding_size;
-//        break;
+        padding_size = pack->receive.padding_size;
+        break;
     case 1:
-        return pack->transmit.padding_size;
-//        break;
+        padding_size = pack->transmit.padding_size;
+        break;
     default:
-//        return 0;
         break;
     }
-    return 0;
+    return padding_size;
 }
 
 udc_pack_t *udc_pack_get_header(void)
@@ -182,7 +183,7 @@ bool udc_pack_obj_is_end(const udc_pack_t *pack, udc_pack_receive_or_transmit_t 
 
     if (padding_size == 0)
         return true;
-    uint16_t obj_end_pos = (uint32_t)obj->data - (uint32_t)target_buf + obj->size;
+    uint16_t obj_end_pos = (uintptr_t)obj->data - (uintptr_t)target_buf + obj->size;
     if (UDC_ABS(padding_size - obj_end_pos) <= pack->verify.verify_len)
         return true;
 
@@ -372,6 +373,23 @@ int udc_pack_push_single(udc_pack_t *pack, uint8_t id, uint16_t size, const void
     pack->transmit = tr_tmp;
 
     return ret;
+}
+
+int udc_pack_receive_wait(udc_pack_t *pack, uint32_t timeout,  uint8_t isClearnFinished)
+{
+    uint32_t last_tick = udc_tick_get();
+    while (0 == pack->receive.receive_finished)
+    {
+        if (udc_tick_elaps(last_tick) > timeout)
+        {
+            return -1;
+        }
+    }
+    if (isClearnFinished)
+    {
+        pack->receive.receive_finished = 0;
+    }
+    return udc_pack_check_receive_verify(pack);
 }
 
 int udc_pack_check_receive_verify(udc_pack_t *pack)

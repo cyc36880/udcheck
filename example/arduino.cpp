@@ -33,12 +33,12 @@ void udc_event_cb(udc_event_t * e)
         Serial.printf("size: %d, id: %d \n", obj.size, obj.id);
     );
     Serial.printf("udc pack task\n");
-    UDC_PACK_RECEIVE_WAIT(pack, data_buf, 50, 2000, // 阻塞等待接收
+    UDC_PACK_RECEIVE_WAIT_0(pack, data_buf, 50, 2000, // 阻塞等待接收
         udc_obj_t obj;
         UDC_PACK_OBJ_FOREACH(UDC_PACK_RECEIVE, pack, &obj,
             Serial.printf(">>>1 obj id:%d, obj len:%d\n", obj.id, obj.size);
         );
-        UDC_PACK_RECEIVE_WAIT(pack, data_buf, 50, 2000,  // 阻塞等待接收
+        UDC_PACK_RECEIVE_WAIT_0(pack, data_buf, 50, 2000,  // 阻塞等待接收
             udc_obj_t obj;
             UDC_PACK_OBJ_FOREACH(UDC_PACK_RECEIVE, pack, &obj,
                 Serial.printf("<<<2 obj id:%d, obj len:%d\n", obj.id, obj.size);
