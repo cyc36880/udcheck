@@ -1,5 +1,5 @@
 #include "udc_mem.h"
-#include "../../../udc_conf.h"
+#include "udc_conf.h"
 #if UDC_USE_ALLOC
     #include UDC_MEM_CUCTOM_INCLUDE
 #endif
