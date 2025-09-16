@@ -239,6 +239,14 @@ int udc_pack_get_obj(const udc_pack_t *pack, udc_pack_receive_or_transmit_t rece
     return -1;
 }
 
+int udc_pack_clear(udc_pack_t *pack, udc_pack_receive_or_transmit_t receive_or_transmit)
+{
+    if (NULL == pack)
+        return -1;
+    set_padding_size(pack, receive_or_transmit, 0);
+    return 0;
+}
+
 int udc_pack_append_data(udc_pack_t *pack, uint8_t id, uint16_t size, const void *data)
 {
     if (!check_id(id))

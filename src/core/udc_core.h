@@ -309,6 +309,14 @@ int udc_pack_get_next_obj(const udc_pack_t *pack, udc_pack_receive_or_transmit_t
  */
 int udc_pack_get_obj(const udc_pack_t *pack, udc_pack_receive_or_transmit_t revive_or_transmit, uint8_t id, udc_obj_t *obj);
 
+/**
+ * @description: Clear the buffer.
+ * @param pack               Package pointer
+ * @param revive_or_transmit 0:receive 1:transmit
+ * @return                   0:success -1:failed
+ */
+int udc_pack_clear(udc_pack_t *pack, udc_pack_receive_or_transmit_t receive_or_transmit);
+
 #ifdef __cplusplus
 }
 #endif
