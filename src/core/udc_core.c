@@ -7,7 +7,7 @@
 
 #define FIRST_DATA_OFFSET(pack) (pack->header.header_len + 2)
 
-#define check_id(id) ( ( (id) >= 0 && (id) <= 119 ) || ( (id) >= 240 && (id) <= 255 ) )
+#define check_id(id) ( ( (id) <= 119 ) || ( (id) >= 240 && (id) <= 255 ) )
 
 #define id_to_objid(id, size) (id < 240 ?             \
                                     size <= 255 ?     \
