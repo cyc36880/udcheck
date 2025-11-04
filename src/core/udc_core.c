@@ -411,12 +411,22 @@ int udc_pack_check_receive_verify(udc_pack_t *pack)
         return -1;
     if (0 != calculate_verify(pack, target_buf, rev_size - pack->verify.verify_len, verify))
         return -1;
-    verify_buf = target_buf + udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) - pack->verify.verify_len;
+    verify_buf = target_buf + rev_size - pack->verify.verify_len;
     for (uint8_t i = 0; i < pack->verify.verify_len; i++)
     {
         if (verify_buf[i] != verify[i])
             return -1;
     }
+    udc_obj_t obj = {0};
+    size_t obj_total_size = 0;
+    UDC_PACK_OBJ_FOREACH(UDC_PACK_RECEIVE, pack, &obj, 
+        obj_total_size += obj.size;
+        obj_total_size += obj_header_size2(obj.id, obj.size);
+        if (obj_total_size > (rev_size - FIRST_DATA_OFFSET(pack) - pack->verify.verify_len))
+            return -1;
+    );
+    if (obj_total_size != (rev_size - FIRST_DATA_OFFSET(pack) - pack->verify.verify_len))
+        return -1;
     return 0;
 }
 
@@ -450,6 +460,12 @@ void udc_pack_task(void)
             {
                 // 接收完成 （事件）
                 udc_event_send_exe_now(pack, UDC_EVENT_PACK_RECEIVE_FINSHED, NULL);
+
+                // 校验成功，校验值加1; 确保下一次接收校验不会与缓冲区校验相撞
+                uint8_t *target_buf = udc_pack_get_target_buffer(pack, UDC_PACK_RECEIVE);
+                uint16_t rev_size = udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE);
+                uint8_t * verify_buf = target_buf + rev_size - pack->verify.verify_len;
+                verify_buf[0]+=1;
             }
             else
             {
