@@ -4,6 +4,7 @@
 #include "task.h"
 #include "esp_task_wdt.h"
 
+udc_pack_group_t pack_group;
 udc_pack_t udc_pack;
 udc_pack_t udc_pack2;
 uint8_t udc_send_buf[100];
@@ -62,6 +63,7 @@ void setup()
 {
     Serial.begin(115200);
     udc_pack_init_t init = {
+        .pack_group = &pack_group,
         .pack = &udc_pack,
         .header = {
             .header = "\x01\x02\x03\x04",
@@ -69,6 +71,7 @@ void setup()
         }
     };
     udc_pack_init_t init2 = {
+        .pack_group = &pack_group,
         .pack = &udc_pack2,
         .header = {
             .header = "\x01\x02\x03\x05",
@@ -121,7 +124,7 @@ void udc_function( void * param )
 {
     while (1)
     {
-        udc_pack_task();
+        udc_pack_task(&pack_group);
         vTaskDelay(1 / portTICK_PERIOD_MS);
     }
 }

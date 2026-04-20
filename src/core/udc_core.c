@@ -44,13 +44,16 @@ static void event_cb(udc_event_t * e);
 /**********************
  *  STATIC VARIABLES
  **********************/
-static udc_pack_t *udc_pack_head = NULL;
+
+
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
 
 void udc_pack_init(udc_pack_init_t *pack_init)
 {
+    if (NULL == pack_init || NULL == pack_init->pack_group || NULL == pack_init->pack)
+        return;
     udc_pack_header_t header_temp = {
         .header = "\xFA",
         .header_len = 1
@@ -71,13 +74,13 @@ void udc_pack_init(udc_pack_init_t *pack_init)
 
 
     pack->next = NULL;
-    if (udc_pack_head == NULL)
+    if (pack_init->pack_group->udc_pack_header == NULL)
     {
-        udc_pack_head = pack;
+        pack_init->pack_group->udc_pack_header = pack;
     }
     else
     {
-        udc_pack_t *temp = udc_pack_head;
+        udc_pack_t *temp = pack_init->pack_group->udc_pack_header;
         while (temp->next != NULL)
         {
             temp = temp->next;
@@ -159,9 +162,9 @@ uint16_t udc_pack_get_padding_size(const udc_pack_t *pack, udc_pack_receive_or_t
     return padding_size;
 }
 
-udc_pack_t *udc_pack_get_header(void)
+udc_pack_t *udc_pack_get_header(udc_pack_group_t *pack_group)
 {
-    return udc_pack_head;
+    return pack_group->udc_pack_header;
 }
 
 udc_pack_t *udc_pack_get_next(const udc_pack_t *pack)
@@ -318,48 +321,55 @@ int udc_pack_push(udc_pack_t *pack)
     return ret;
 }
 
-void udc_pack_receive_data(udc_pack_t *pack, const uint8_t *buf, uint16_t len)
+void udc_pack_receive_data(udc_pack_group_t *pack_group, const uint8_t *buf, uint16_t len)
 {
-    volatile udc_receive_t *receive = &pack->receive;
-    if (1 == receive->receive_finished)
-        return;
-
-    uint8_t *target_buf = udc_pack_get_target_buffer(pack, UDC_PACK_RECEIVE);
-    uint8_t *receive_size_target_buf = target_buf + pack->header.header_len;
-
-    receive->recevice_last_tick = udc_tick_get();
-
-    if (udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) + len >= get_target_buffer_size(pack, UDC_PACK_RECEIVE))
+    udc_pack_t *pack_head = udc_pack_get_header(pack_group);
+    udc_pack_t *pack =  pack_head;
+    while (pack_head != NULL)
     {
-        // UDC_EVENT_RECEIVE_PADDING_OUT
-        // udc_event_send_exe_now(pack, UDC_EVENT_RECEIVE_PADDING_OUT, NULL);
-        receive->check_receive_heard_flag = 0;
-        set_padding_size(pack, UDC_PACK_RECEIVE, 0);
-        return;
-    }
-    memcpy(target_buf + udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE), buf, len);
-    set_padding_size(pack, UDC_PACK_RECEIVE, udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) + len);
-    if (receive->check_receive_heard_flag==0 && udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) >= FIRST_DATA_OFFSET(pack))
-    {
-        if (0 != check_receive_pack_header(pack))
+        pack = pack_head;
+        pack_head = udc_pack_get_next(pack_head);
+        volatile udc_receive_t *receive = &pack->receive;
+        if (1 == receive->receive_finished)
+            continue;
+
+        uint8_t *target_buf = udc_pack_get_target_buffer(pack, UDC_PACK_RECEIVE);
+        uint8_t *receive_size_target_buf = target_buf + pack->header.header_len;
+
+        receive->recevice_last_tick = udc_tick_get();
+
+        if (udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) + len >= get_target_buffer_size(pack, UDC_PACK_RECEIVE))
         {
-            // UDC_EVENT_RECEIVE_HEADER_ERROR
-            // udc_event_send_exe_now(pack, UDC_EVENT_RECEIVE_HEADER_ERROR, NULL);
+            // UDC_EVENT_RECEIVE_PADDING_OUT
+            // udc_event_send_exe_now(pack, UDC_EVENT_RECEIVE_PADDING_OUT, NULL);
             receive->check_receive_heard_flag = 0;
             set_padding_size(pack, UDC_PACK_RECEIVE, 0);
-            return;
+            continue;
         }
-        uint16_t receive_size = 0;
-        receive_size = receive_size_target_buf[0];
-        receive_size <<= 8;
-        receive_size |= receive_size_target_buf[1];
-        receive->ready_receive_data_size = receive_size;
-        receive->check_receive_heard_flag = 1;
-    }
-    
-    if (udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) >= receive->ready_receive_data_size + FIRST_DATA_OFFSET(pack))
-    {
-        receive->receive_finished = 1;
+        memcpy(target_buf + udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE), buf, len);
+        set_padding_size(pack, UDC_PACK_RECEIVE, udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) + len);
+        if (receive->check_receive_heard_flag==0 && udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) >= FIRST_DATA_OFFSET(pack))
+        {
+            if (0 != check_receive_pack_header(pack))
+            {
+                // UDC_EVENT_RECEIVE_HEADER_ERROR
+                // udc_event_send_exe_now(pack, UDC_EVENT_RECEIVE_HEADER_ERROR, NULL);
+                receive->check_receive_heard_flag = 0;
+                set_padding_size(pack, UDC_PACK_RECEIVE, 0);
+                continue;
+            }
+            uint16_t receive_size = 0;
+            receive_size = receive_size_target_buf[0];
+            receive_size <<= 8;
+            receive_size |= receive_size_target_buf[1];
+            receive->ready_receive_data_size = receive_size;
+            receive->check_receive_heard_flag = 1;
+        }
+        
+        if (udc_pack_get_padding_size(pack, UDC_PACK_RECEIVE) >= receive->ready_receive_data_size + FIRST_DATA_OFFSET(pack))
+        {
+            receive->receive_finished = 1;
+        }
     }
 }
 
@@ -430,13 +440,15 @@ int udc_pack_check_receive_verify(udc_pack_t *pack)
     return 0;
 }
 
-void udc_pack_task(void)
+void udc_pack_task(udc_pack_group_t *pack_group)
 {
-    udc_pack_t *pack = udc_pack_get_header();
-    uint8_t *receive_target_buf = udc_pack_get_target_buffer(pack, UDC_PACK_RECEIVE);
+    udc_pack_t *pack_header = udc_pack_get_header(pack_group);
+    udc_pack_t *pack = pack_header;
     volatile udc_receive_t *receive = NULL;
-    while (pack)
+    while (pack_header != NULL)
     {
+        pack = pack_header;
+        pack_header = udc_pack_get_next(pack_header);
         int pack_push_ret = udc_pack_push(pack);
         if (pack_push_ret > 0)
         {
@@ -475,7 +487,6 @@ void udc_pack_task(void)
             set_padding_size(pack, UDC_PACK_RECEIVE, 0);
             receive->receive_finished = 0;
         }
-        pack = udc_pack_get_next(pack);
     }
 }
 

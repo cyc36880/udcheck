@@ -57,7 +57,7 @@ typedef int (*calculate_verify_func_t)(const struct _udc_pack_t *pack, const uin
 typedef enum 
 {
     UDC_PACK_RECEIVE = 0,
-    UDC_PACK_TRANSMIT = 1,
+    UDC_PACK_TRANSMIT,
 } udc_pack_receive_or_transmit_t;
 
 typedef struct _udc_obj_t
@@ -121,8 +121,14 @@ struct _udc_pack_t
     udc_pack_verify_t verify;
 };
 
+typedef struct
+{
+    udc_pack_t *udc_pack_header;
+} udc_pack_group_t;
+
 typedef struct _udc_pack_init
 {
+    udc_pack_group_t *pack_group;
     udc_pack_t *pack;
     udc_pack_header_t header;
     udc_pack_verify_t verify;
@@ -142,13 +148,14 @@ void udc_pack_init(udc_pack_init_t *pack_init);
  * @param len  reveive buffer length
  * @return {*}
  */
-void udc_pack_receive_data(udc_pack_t *pack, const uint8_t *buf, uint16_t len);
+void udc_pack_receive_data(udc_pack_group_t *pack_group, const uint8_t *buf, uint16_t len);
 
 /**
  * @description: udcheck run the function.
+ * @param pack_group Package group pointer
  * @return {*}
  */
-void udc_pack_task(void);
+void udc_pack_task(udc_pack_group_t *pack_group);
 
 /**
  * @description: Set up the sending function.
@@ -260,9 +267,10 @@ uint16_t udc_pack_get_padding_size(const udc_pack_t *pack, udc_pack_receive_or_t
 
 /**
  * @description: Get the head node of the pack.
+ * @param pack_group Pack group pointer
  * @return Head node pointer
  */
-udc_pack_t *udc_pack_get_header(void);
+udc_pack_t *udc_pack_get_header(udc_pack_group_t *pack_group);
 
 /**
  * @description: Get the next node based on the current node.
